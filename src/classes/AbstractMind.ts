@@ -5,17 +5,8 @@ export interface MindBaseOptions {
   detail?: string
   color?: number | string
   scale?: number
-  /**
-   * Show a name label above the sphere (camera-facing).
-   */
   labelEnabled?: boolean
-  /**
-   * Approximate label height in world units.
-   */
   labelWorldSize?: number
-  /**
-   * Additional offset above the sphere surface in world units.
-   */
   labelOffset?: number
   metalness?: number
   roughness?: number
@@ -26,10 +17,6 @@ export interface MindBaseOptions {
   position?: { x?: number; y?: number; z?: number } | [number, number, number]
 }
 
-/**
- * Abstract base class for Mind sphere objects
- * Provides common functionality that Mind class extends
- */
 export class AbstractMind {
   name: string
   detail: string
@@ -51,7 +38,6 @@ export class AbstractMind {
   private labelSprite: THREE.Sprite | null
 
   constructor(options: MindBaseOptions = {}) {
-    // Configuration
     this.name = options.name || ''
     this.detail = options.detail || ''
     const colorValue = options.color || 0x3cdd8c
@@ -66,7 +52,6 @@ export class AbstractMind {
     this.widthSegments = options.widthSegments || 64
     this.heightSegments = options.heightSegments || 64
     
-    // Position initialization
     if (Array.isArray(options.position)) {
       this.position = {
         x: options.position[0] || 0,
@@ -87,7 +72,6 @@ export class AbstractMind {
     this.material = null
     this.mesh = null
 
-    // Label config
     this.labelEnabled = options.labelEnabled ?? true
     this.labelWorldSize = options.labelWorldSize ?? 0.35
     this.labelOffset = options.labelOffset ?? 0.15
@@ -120,7 +104,6 @@ export class AbstractMind {
     }
     this.mesh = new THREE.Mesh(this.geometry, this.material)
     this.mesh.position.set(this.position.x, this.position.y, this.position.z)
-    // Apply the scale to the mesh
     this.mesh.scale.set(this.scale, this.scale, this.scale)
 
     this.updateLabel()
@@ -174,17 +157,14 @@ export class AbstractMind {
 
   setPosition(x: number | { x?: number; y?: number; z?: number } | [number, number, number], y?: number, z?: number): void {
     if (Array.isArray(x)) {
-      // Array format: [x, y, z]
       this.position = { x: x[0] || 0, y: x[1] || 0, z: x[2] || 0 }
     } else if (typeof x === 'object' && x !== null) {
-      // Object format: { x, y, z }
       this.position = {
         x: x.x ?? this.position.x,
         y: x.y ?? this.position.y,
         z: x.z ?? this.position.z
       }
     } else {
-      // Individual coordinates: x, y, z
       this.position = {
         x: x,
         y: y ?? this.position.y,
@@ -346,6 +326,4 @@ export class AbstractMind {
   }
 }
 
-// Export as default alias for backward compatibility
 export default AbstractMind
-

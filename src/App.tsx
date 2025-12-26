@@ -2,23 +2,23 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import Mind from "./classes/Mind";
 import Mental from "./classes/Mental";
+import BadMental from "./classes/bad/BadMental";
+import MeritMental from "./classes/good/MeritMental";
 import { OrbitControls } from "./components/OrbitControls";
 import "./App.css";
 
 function MindSphere() {
   const mind = useMemo(() => {
-    // Create the Mind sphere - make it transparent so Mental spheres are visible inside
     const mindInstance = new Mind({ 
       name: "My Mind", 
       detail: "This is a detailed description",
       position: [0, 0, 0],
       scale: 1.5,
       transparent: true,
-      opacity: 0.15, // Transparent to see inside
+      opacity: 0.15,
       color: 0x3cdd8c
     });
 
-    // Create and add Mental spheres inside the Mind
     const thought1 = new Mental({ 
       name: "Thought 1", 
       detail: "First mental sphere",
@@ -43,38 +43,45 @@ function MindSphere() {
       color: 0xffe66d
     });
 
-    const thought4 = new Mental({ 
-      name: "Thought 4", 
-      detail: "Fourth mental sphere",
-      position: [0.2, -0.2, 0.3],
+    const greedy1 = new BadMental({ 
+      name: "Greedy Thought 1",
+      position: [0.3, 0.2, 0.1],
       scale: 0.1,
-      color: 0xff9ff3
+      color: 0xff0000,
+      attractionStrength: 0.001,
+      attractionRange: 0.5
     });
 
-    const thought5 = new Mental({ 
-      name: "Thought 5", 
-      detail: "Fifth mental sphere",
-      position: [-0.2, 0.1, -0.1],
-      scale: 0.08,
-      color: 0x95e1d3
+    const greedy2 = new BadMental({ 
+      name: "Greedy Thought 2",
+      position: [-0.3, -0.2, 0.1],
+      scale: 0.1,
+      color: 0xff0000
     });
 
-    // Add mentals to the mind (positions will be constrained automatically)
+    const merit = new MeritMental({
+      name: "Merit Thought",
+      position: [0.2, 0.1, -0.1],
+      scale: 0.12,
+      color: 0x80ccff,
+      directionChangeInterval: 90
+    });
+
+
     mindInstance.addMental(thought1);
     mindInstance.addMental(thought2);
     mindInstance.addMental(thought3);
-    mindInstance.addMental(thought4);
-    mindInstance.addMental(thought5);
+    mindInstance.addMental(greedy1);
+    mindInstance.addMental(greedy2);
+    mindInstance.addMental(merit);
 
     return mindInstance;
   }, []);
 
-  // Animation loop - update physics every frame
   useFrame((_state, delta) => {
     mind.updatePhysics(delta);
   });
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       mind.dispose();
@@ -94,9 +101,9 @@ function GroundPlane() {
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
       <planeGeometry args={[20, 20]} />
       <meshStandardMaterial 
-        color={0x1a1a1a} 
-        metalness={0.3}
-        roughness={0.8}
+        color={0xffffff} 
+        metalness={0.1}
+        roughness={0.5}
       />
     </mesh>
   );
@@ -108,7 +115,10 @@ function ThreeScene() {
       camera={{ position: [0, 0, 5], fov: 75 }}
       shadows
       gl={{ antialias: true, toneMappingExposure: 1.2 }}
+      style={{ background: '#ffffff' }}
     >
+      <color attach="background" args={['#ffffff']} />
+      
       <OrbitControls 
         enableDamping={true}
         dampingFactor={0.05}
@@ -119,13 +129,11 @@ function ThreeScene() {
         target={[0, 0, 0]}
       />
       
-      {/* Ambient light - reduced for better contrast */}
-      <ambientLight intensity={0.2} />
+      <ambientLight intensity={1.0} />
       
-      {/* Main directional light from top-right - increased intensity */}
       <directionalLight 
         position={[5, 8, 5]} 
-        intensity={1.5}
+        intensity={2.0}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -136,24 +144,27 @@ function ThreeScene() {
         shadow-camera-bottom={-10}
       />
       
-      {/* Fill light from opposite side - reduced for contrast */}
       <directionalLight 
         position={[-5, 3, -5]} 
-        intensity={0.3}
+        intensity={1.5}
       />
       
-      {/* Point light for additional depth and contrast */}
       <pointLight 
         position={[0, 6, 0]} 
-        intensity={1.2}
+        intensity={2.0}
         distance={15}
         decay={2}
       />
       
-      {/* Ground plane */}
+      <pointLight 
+        position={[0, 0, 5]} 
+        intensity={1.5}
+        distance={15}
+        decay={2}
+      />
+      
       <GroundPlane />
       
-      {/* Mind sphere */}
       <MindSphere />
     </Canvas>
   );

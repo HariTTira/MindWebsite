@@ -3,24 +3,12 @@ import * as THREE from 'three'
 export interface MentalBaseOptions {
   name?: string
   detail?: string
+  type?: string
   color?: number | string
   scale?: number
-  /**
-   * Desired constant movement speed in local-space units per frame at 60fps
-   * (Mind.updatePhysics multiplies by deltaTime*60 to stay stable across FPS)
-   */
   motionSpeed?: number
-  /**
-   * Show a name label above the sphere (camera-facing).
-   */
   labelEnabled?: boolean
-  /**
-   * Approximate label height in world units.
-   */
   labelWorldSize?: number
-  /**
-   * Additional offset above the sphere surface in world units.
-   */
   labelOffset?: number
   metalness?: number
   roughness?: number
@@ -31,13 +19,10 @@ export interface MentalBaseOptions {
   position?: { x?: number; y?: number; z?: number } | [number, number, number]
 }
 
-/**
- * Abstract base class for Mental sphere objects
- * Provides common functionality for spheres that exist inside the Mind
- */
 export class AbstractMental {
   name: string
   detail: string
+  type: string
   color: number
   scale: number
   metalness: number
@@ -47,11 +32,10 @@ export class AbstractMental {
   widthSegments: number
   heightSegments: number
   position: { x: number; y: number; z: number }
-  geometry: THREE.SphereGeometry | null
-  material: THREE.MeshStandardMaterial | null
-  mesh: THREE.Mesh | null
+  geometry: THREE.BufferGeometry | THREE.SphereGeometry | null
+  material: THREE.MeshStandardMaterial | THREE.PointsMaterial | null
+  mesh: THREE.Mesh | THREE.Points | null
   velocity: { x: number; y: number; z: number }
-  radius: number
   motionSpeed: number
   labelEnabled: boolean
   labelWorldSize: number
@@ -59,9 +43,9 @@ export class AbstractMental {
   private labelSprite: THREE.Sprite | null
 
   constructor(options: MentalBaseOptions = {}) {
-    // Configuration
     this.name = options.name || ''
     this.detail = options.detail || ''
+    this.type = options.type || ''
     const colorValue = options.color || 0xff6b9d
     this.color = typeof colorValue === 'string'
       ? parseInt(colorValue.replace('#', ''), 16)
@@ -74,7 +58,6 @@ export class AbstractMental {
     this.widthSegments = options.widthSegments || 64
     this.heightSegments = options.heightSegments || 64
     
-    // Position initialization
     if (Array.isArray(options.position)) {
       this.position = {
         x: options.position[0] || 0,
@@ -95,12 +78,9 @@ export class AbstractMental {
     this.material = null
     this.mesh = null
     
-    // Physics properties
     this.velocity = { x: 0, y: 0, z: 0 }
-    this.radius = this.scale
     this.motionSpeed = options.motionSpeed ?? 0.002
 
-    // Label config
     this.labelEnabled = options.labelEnabled ?? true
     this.labelWorldSize = options.labelWorldSize ?? 0.18
     this.labelOffset = options.labelOffset ?? 0.06
@@ -133,7 +113,6 @@ export class AbstractMental {
     }
     this.mesh = new THREE.Mesh(this.geometry, this.material)
     this.mesh.position.set(this.position.x, this.position.y, this.position.z)
-    // Apply the scale to the mesh
     this.mesh.scale.set(this.scale, this.scale, this.scale)
 
     this.updateLabel()
@@ -151,7 +130,6 @@ export class AbstractMental {
 
   setScale(scale: number): void {
     this.scale = scale
-    this.radius = scale
     if (this.mesh) {
       this.mesh.scale.set(scale, scale, scale)
     }
@@ -175,10 +153,9 @@ export class AbstractMental {
     return this.motionSpeed
   }
 
-  /**
-   * Keeps the mental moving at a constant speed.
-   * If velocity is zero, assigns a random direction.
-   */
+  applyCustomPhysics(_otherMentals: AbstractMental[]): void {
+  }
+
   normalizeVelocityToMotionSpeed(): void {
     const { x, y, z } = this.velocity
     const mag = Math.sqrt(x * x + y * y + z * z)
@@ -212,7 +189,6 @@ export class AbstractMental {
       return fallback
     }
 
-    // Background
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
@@ -235,7 +211,6 @@ export class AbstractMental {
     ctx.fill()
     ctx.stroke()
 
-    // Text
     const safe = text || ''
     let fontSize = 84
     ctx.textAlign = 'center'
@@ -276,16 +251,14 @@ export class AbstractMental {
   private updateLabelTransform(): void {
     if (!this.mesh || !this.labelSprite) return
 
-    // Put the label just above the surface, using world-space offset.
     const yLocal = 1 + (this.labelOffset / Math.max(0.00001, this.scale))
     this.labelSprite.position.set(0, yLocal, 0)
 
-    // Keep label size roughly constant in world space, independent of parent scale.
     const s = this.labelWorldSize / Math.max(0.00001, this.scale)
     this.labelSprite.scale.set(s * 2.0, s * 1.0, 1)
   }
 
-  private updateLabel(): void {
+  protected updateLabel(): void {
     if (!this.mesh) return
 
     const shouldShow = this.labelEnabled && this.name.trim().length > 0
@@ -318,7 +291,7 @@ export class AbstractMental {
   }
   
   getRadius(): number {
-    return this.radius
+    return this.scale
   }
 
   setOpacity(opacity: number): void {
@@ -336,31 +309,28 @@ export class AbstractMental {
 
   setMetalness(value: number): void {
     this.metalness = value
-    if (this.material) {
+    if (this.material && this.material instanceof THREE.MeshStandardMaterial) {
       this.material.metalness = value
     }
   }
 
   setRoughness(value: number): void {
     this.roughness = value
-    if (this.material) {
+    if (this.material && this.material instanceof THREE.MeshStandardMaterial) {
       this.material.roughness = value
     }
   }
 
   setPosition(x: number | { x?: number; y?: number; z?: number } | [number, number, number], y?: number, z?: number): void {
     if (Array.isArray(x)) {
-      // Array format: [x, y, z]
       this.position = { x: x[0] || 0, y: x[1] || 0, z: x[2] || 0 }
     } else if (typeof x === 'object' && x !== null) {
-      // Object format: { x, y, z }
       this.position = {
         x: x.x ?? this.position.x,
         y: x.y ?? this.position.y,
         z: x.z ?? this.position.z
       }
     } else {
-      // Individual coordinates: x, y, z
       this.position = {
         x: x,
         y: y ?? this.position.y,
@@ -394,7 +364,15 @@ export class AbstractMental {
     return this.detail
   }
 
-  getMesh(): THREE.Mesh | null {
+  setType(type: string): void {
+    this.type = type
+  }
+
+  getType(): string {
+    return this.type
+  }
+
+  getMesh(): THREE.Mesh | THREE.Points | null {
     return this.mesh
   }
 
@@ -409,6 +387,4 @@ export class AbstractMental {
   }
 }
 
-// Export as default alias for backward compatibility
 export default AbstractMental
-
