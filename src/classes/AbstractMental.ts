@@ -16,6 +16,9 @@ export interface MentalBaseOptions {
   opacity?: number
   widthSegments?: number
   heightSegments?: number
+  modelPath?: string
+  modelTargetWorldSize?: number
+  modelOffset?: { x?: number; y?: number; z?: number }
   position?: { x?: number; y?: number; z?: number } | [number, number, number]
 }
 
@@ -41,6 +44,7 @@ export class AbstractMental {
   labelWorldSize: number
   labelOffset: number
   private labelSprite: THREE.Sprite | null
+  private labelText: string
 
   constructor(options: MentalBaseOptions = {}) {
     this.name = options.name || ''
@@ -82,9 +86,11 @@ export class AbstractMental {
     this.motionSpeed = options.motionSpeed ?? 0.002
 
     this.labelEnabled = options.labelEnabled ?? true
-    this.labelWorldSize = options.labelWorldSize ?? 0.18
+    // Make labels a bit smaller by default.
+    this.labelWorldSize = options.labelWorldSize ?? 0.12
     this.labelOffset = options.labelOffset ?? 0.06
     this.labelSprite = null
+    this.labelText = ''
   }
 
   createGeometry(): void {
@@ -156,6 +162,10 @@ export class AbstractMental {
   applyCustomPhysics(_otherMentals: AbstractMental[]): void {
   }
 
+  // Hook for subclasses to advance custom materials each frame (e.g., bubble distortions)
+  updateMaterial(_deltaTime: number): void {
+  }
+
   normalizeVelocityToMotionSpeed(): void {
     const { x, y, z } = this.velocity
     const mag = Math.sqrt(x * x + y * y + z * z)
@@ -179,8 +189,8 @@ export class AbstractMental {
 
   private createLabelTexture(text: string): THREE.CanvasTexture {
     const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 256
+    canvas.width = 384
+    canvas.height = 176
 
     const ctx = canvas.getContext('2d')
     if (!ctx) {
@@ -192,10 +202,10 @@ export class AbstractMental {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
-    ctx.lineWidth = 6
+    ctx.lineWidth = 5
 
-    const pad = 20
-    const r = 22
+    const pad = 14
+    const r = 16
     const x = pad
     const y = pad
     const w = canvas.width - pad * 2
@@ -212,13 +222,13 @@ export class AbstractMental {
     ctx.stroke()
 
     const safe = text || ''
-    let fontSize = 84
+    let fontSize = 64
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = 'rgba(255, 255, 255, 0.98)'
 
-    const maxTextWidth = w - 40
-    while (fontSize > 26) {
+    const maxTextWidth = w - 28
+    while (fontSize > 22) {
       ctx.font = `700 ${fontSize}px Arial`
       const metrics = ctx.measureText(safe)
       if (metrics.width <= maxTextWidth) break
@@ -258,17 +268,31 @@ export class AbstractMental {
     this.labelSprite.scale.set(s * 2.0, s * 1.0, 1)
   }
 
+  protected getDisplayLabel(): string {
+    return this.labelText.length > 0 ? this.labelText : this.name
+  }
+
+  setLabelText(text?: string): void {
+    this.labelText = text ?? ''
+    this.updateLabel()
+  }
+
+  getLabelObject(): THREE.Sprite | null {
+    return this.labelSprite
+  }
+
   protected updateLabel(): void {
     if (!this.mesh) return
 
-    const shouldShow = this.labelEnabled && this.name.trim().length > 0
+    const labelContent = this.getDisplayLabel()
+    const shouldShow = this.labelEnabled && labelContent.trim().length > 0
     if (!shouldShow) {
       this.removeLabel()
       return
     }
 
     if (!this.labelSprite) {
-      const texture = this.createLabelTexture(this.name)
+      const texture = this.createLabelTexture(labelContent)
       const material = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
@@ -282,7 +306,7 @@ export class AbstractMental {
       const material = this.labelSprite.material
       if (material instanceof THREE.SpriteMaterial) {
         material.map?.dispose()
-        material.map = this.createLabelTexture(this.name)
+        material.map = this.createLabelTexture(labelContent)
         material.needsUpdate = true
       }
     }

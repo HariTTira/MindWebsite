@@ -32,23 +32,6 @@ export class MeritMental extends Mental {
     )
   }
 
-  createMaterial(): void {
-    this.material = new THREE.MeshPhysicalMaterial({
-      color: this.color,
-      metalness: 0.0,
-      roughness: 0.0,
-      transparent: true,
-      opacity: 0.3,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      transmission: 0.9,
-      thickness: 0.5,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.0,
-      ior: 1.33
-    })
-  }
-
   private createBubbleMesh(): void {
     this.createGeometry()
     this.createMaterial()

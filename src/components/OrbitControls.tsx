@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls as ThreeOrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
+// Shared handle so other components (e.g., camera focusing) can retarget controls.
+export const orbitControlsHandle: { controls: ThreeOrbitControls | null } = { controls: null }
+
 export function OrbitControls(props: {
   enableDamping?: boolean
   dampingFactor?: number
@@ -35,8 +38,10 @@ export function OrbitControls(props: {
     controls.target.set(target[0], target[1], target[2])
     
     controlsRef.current = controls
+    orbitControlsHandle.controls = controls
 
     return () => {
+      orbitControlsHandle.controls = null
       controls.dispose()
     }
   }, [camera, gl, enableDamping, dampingFactor, enableZoom, enablePan, minDistance, maxDistance, target])

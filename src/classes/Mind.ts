@@ -123,6 +123,13 @@ export class Mind extends AbstractMind {
     if (!mindMesh) return
 
     this.mentals.forEach((mental) => {
+      if (mental.isFrozen()) {
+        mental.updateMaterial(deltaTime)
+        return
+      }
+
+      mental.updateMaterial(deltaTime)
+
       const otherMentals = this.mentals.filter(m => m !== mental)
       mental.applyCustomPhysics(otherMentals)
       
@@ -170,7 +177,10 @@ export class Mind extends AbstractMind {
 
     for (let i = 0; i < this.mentals.length; i++) {
       for (let j = i + 1; j < this.mentals.length; j++) {
-        this.handleCollision(this.mentals[i], this.mentals[j])
+        const a = this.mentals[i]
+        const b = this.mentals[j]
+        if (a.isFrozen() || b.isFrozen()) continue
+        this.handleCollision(a, b)
       }
     }
 
